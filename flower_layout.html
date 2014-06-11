@@ -1,0 +1,297 @@
+﻿<!DOCTYPE html>
+<html>
+
+    <head>
+
+        <title>Flower Layout Test</title>
+        <link rel="stylesheet" href="css/default.css" />
+        <script src="lib/d3.v3.min.js"></script>
+
+        <style>
+
+            circle.node {
+                stroke: #acacac;
+                stroke-width: 2;
+                cursor: pointer;
+                z-index: 0;
+                                fill: #fff;
+                                /*-webkit-transform: scale(4,4);*/
+                /*filter: url(css/filters.svg#filter1);*/ 
+            }
+
+                        circle.continent {
+                                fill: #afc7ea;
+
+            }
+
+            circle.node:hover {
+                /*opacity: 0.5;*/
+                /*z-index: 1000;
+                filter: url(css/filters.svg#filter1);*/ 
+                fill: #efefef;
+            }
+
+            text {
+                font-family: arial;
+                font-weight: bold;
+                font-size: 0.7em;
+                fill: #C65740;
+                dominant-baseline: central;
+            }
+
+        </style>
+
+    </head>
+
+    <body>
+
+        Dataset :
+        <select id="dataset">
+            <option value="countries1" selected="selected">Countries 1</option>
+            <option value="countries2">Countries 2</option>
+        </select><br />
+
+        <svg xmlns="http://www.w3.org/2000/svg" version="1.1">
+            <defs>
+                <filter id="f1" x="0" y="0" width="200%" height="200%">
+                    <feOffset result="offOut" in="SourceAlpha" dx="0" dy="0" />
+                    <feGaussianBlur result="blurOut" in="offOut" stdDeviation="3" />
+                    <feBlend in="SourceGraphic" in2="blurOut" mode="normal" />
+                </filter>
+            </defs>
+            <!--<circle r="30" cx="50" cy="50" style="stroke:gray; fill:aliceblue; stroke-width:3px" filter="url(#f1)" />-->
+        </svg>
+
+        <script>
+
+            d3.selection.prototype.moveToFront = function () {
+                return this.each(function () {
+                    this.parentNode.appendChild(this);
+                });
+            };
+
+            d3.layout.flower = function () {
+
+                var value = Number;
+                //    sort = d3_layout_pieSortByValue,
+                var startAngle = Math.PI / 2;
+                var circle = Math.PI * 2;
+
+                function flower(data) {
+
+                    // Compute the numeric values for each data element.
+                    var values = data.map(function(d, i) { return +value.call(flower, d, i); });
+
+                    //// Compute the start angle.
+                    //var a = +(typeof startAngle === "function"
+                    //    ? startAngle.apply(this, arguments)
+                    //    : startAngle);
+
+                    //// Compute the angular scale factor: from value to radians.
+                    //var k = ((typeof endAngle === "function"
+                    //    ? endAngle.apply(this, arguments)
+                    //    : endAngle) - a)
+                    //    / d3.sum(values);
+
+                    var step = circle / data.length;
+
+                    //// Optionally sort the data.
+                    var index = d3.range(data.length);
+                    //if (sort != null) index.sort(sort === d3_layout_pieSortByValue
+                    //    ? function(i, j) { return values[j] - values[i]; }
+                    //    : function(i, j) { return sort(data[i], data[j]); });
+
+                    // Compute the petals!
+                    var petals = [];
+
+                    index.forEach(function (i) {
+
+                        var d;
+
+                        petals[i] = {
+                            data: data[i],
+                            angle: startAngle + (step * i),
+                            value: i
+                            //startAngle: a,
+                            //endAngle: a += d * k
+                        };
+
+                    });
+
+                    return petals;
+                }
+
+                ///**
+                // * Specifies the value function *x*, which returns a nonnegative numeric value
+                // * for each datum. The default value function is `Number`. The value function
+                // * is passed two arguments: the current datum and the current index.
+                // */
+                //pie.value = function(x) {
+                //    if (!arguments.length) return value;
+                //    value = x;
+                //    return pie;
+                //};
+
+                ///**
+                // * Specifies a sort comparison operator *x*. The comparator is passed two data
+                // * elements from the data array, a and b; it returns a negative value if a is
+                // * less than b, a positive value if a is greater than b, and zero if a equals
+                // * b.
+                // */
+                //pie.sort = function(x) {
+                //    if (!arguments.length) return sort;
+                //    sort = x;
+                //    return pie;
+                //};
+
+                ///**
+                // * Specifies the overall start angle of the pie chart. Defaults to 0. The
+                // * start angle can be specified either as a constant or as a function; in the
+                // * case of a function, it is evaluated once per array (as opposed to per
+                // * element).
+                // */
+                //pie.startAngle = function(x) {
+                //    if (!arguments.length) return startAngle;
+                //    startAngle = x;
+                //    return pie;
+                //};
+
+                ///**
+                // * Specifies the overall end angle of the pie chart. Defaults to 2π. The
+                // * end angle can be specified either as a constant or as a function; in the
+                // * case of a function, it is evaluated once per array (as opposed to per
+                // * element).
+                // */
+                //pie.endAngle = function(x) {
+                //    if (!arguments.length) return endAngle;
+                //    endAngle = x;
+                //    return pie;
+                //};
+
+                return flower;
+            };
+
+            //var d3_layout_pieSortByValue = {};
+
+            var countries1 = [
+                { name: 'Austria', type: 'pays' },
+                                { name: 'Europe', type: 'continent' },
+                { name: 'Germany', type: 'pays' },
+                { name: 'Slovakia', type: 'pays' },
+                { name: 'Poland', type: 'pays' }
+            ];
+
+            var countries2 = [
+                { name: 'Europe', type: 'continent' },
+                { name: 'Austria', type: 'pays' },
+                { name: 'Poland', type: 'pays' }
+            ];
+
+
+            var width = 600,
+    height = 400,
+    radius = Math.min(width, height) / 2,
+    centerX = 0,
+    centerY = 0;
+
+            var svg = d3.select("svg")
+    .attr("width", width)
+    .attr("height", height)
+  .append("g")
+    .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
+
+
+
+            var flower = d3.layout.flower();
+
+            var updateNodes = function (data) {
+
+                var dataset = d3.select("#dataset").node().value === 'countries1' ? countries1 : countries2;
+                //var dataset = data;
+                //console.log(dataset);
+
+                var circles = svg.selectAll("circle.node")
+                    .data(flower(dataset), function (d) { return d.data.name; });
+
+                circles.enter()
+                    .append("circle")
+                    .attr("r", 0)
+                    .attr('class', function (d) { return 'node ' + d.data.type || null; });
+
+
+                circles
+
+                    
+                    //.classed(function (d) { return d.data.name; }, true)
+                .transition()
+      .duration(500)
+                    .ease("cubic-out")
+                    .attr("r", 50)
+                                    .attr("transform", function (d) {
+                                        return "translate(" + (centerX + (130 * Math.sin(d.angle) * 1)) + "," + (centerY + (130 * Math.cos(d.angle) * -1)) + ")";
+                                    });
+
+
+                circles.exit()
+                    //.attr("class", "exit")
+                    //.transition()
+                    //.duration(750)
+                    //.attr("y", 60)
+                    //.style("fill-opacity", 1e-6)
+                                    .transition()
+      .duration(200)
+                    .attr("r", 0)
+                    .remove();
+
+                //circles.append("text")
+                //     //.attr("transform", function (d) { return "translate(" + arc.centroid(d) + ")"; })
+                //    .attr("dx", function (d) { return centerX + (100 * Math.sin(d.angle) * 1); })
+                //     .attr("dy", function (d) { return centerY + (100 * Math.cos(d.angle) * -1); })
+                //     .style("text-anchor", "middle")
+                //     .text(function (d) { return d.data.name; });
+
+                circles.on('click', function (d, i) { alert('You clicked on ' + d.data.name); });
+
+                circles.on("mouseover", function () {
+                    var sel = d3.select(this);
+                    console.log(sel);
+                    sel.moveToFront();
+                });
+
+            }
+
+            updateNodes();
+
+            d3.select("#dataset").on('change', updateNodes);
+
+            //d3.xml("data/cia.xml", "application/xml", function (xml) {
+
+            //    var france = d3.select(xml).select('country[id="cid-cia-France"]').selectAll('borders, coasts, languages')[0];
+            //    var neighbors = (france.map(function (d, i) {
+            //        var node = {};
+            //        //node.name = d.attributes.country.nodeValue;
+            //        node.name = i;
+            //        node.type = d.nodeName;
+            //        return node;
+            //    }));
+
+            //    console.log(neighbors);
+
+            //    updateNodes(neighbors);
+
+            //});
+
+            //circles.append("text")
+            //     //.attr("transform", function (d) { return "translate(" + arc.centroid(d) + ")"; })
+            //    .attr("dx", function (d) { return centerX + (100 * Math.sin(d.angle) * 1); })
+            //     .attr("dy", function (d) { return centerY + (100 * Math.cos(d.angle) * -1); })
+            //     .style("text-anchor", "middle")
+            //     .text(function (d) { return d.data.name; });
+
+
+
+        </script>
+
+    </body>
+
+</html>

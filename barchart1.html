@@ -1,0 +1,260 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+
+    <title>Bar Chart 1</title>
+
+    <style>
+
+        .container {
+            margin: 40px auto;
+            width: 400px;
+        }
+
+        .chart_container {
+            width: 100%;
+            height: 300px;
+            border: solid 1px #aaa;
+            padding: 20px;
+        }
+
+        #chart rect {
+            fill: steelblue;
+            cursor: pointer;
+            fill-opacity: .8;
+        }
+
+        #chart rect:hover {
+            fill: lightgreen;
+        }
+
+        #chart rect.extent {
+            fill: gray;
+            fill-opacity: .5;
+        }
+
+        /*#chart text {
+            fill: white;
+            font: 10px sans-serif;
+            text-anchor: middle;
+        }*/
+
+        .axis text {
+            font: 10px sans-serif;
+        }
+
+        .axis path,
+        .axis line {
+            fill: none;
+            stroke: #000;
+            shape-rendering: crispEdges;
+        }
+
+        .x.axis path {
+            display: none;
+        }
+
+        .x.axis line {
+            display: none;
+        }
+
+        /*.brush .extent {
+            stroke: #000;
+            fill-opacity: .125;
+            shape-rendering: crispEdges;
+        }*/
+
+        /*#chart .resize rect {
+            fill: black;
+            visibility: visible !important;
+        }*/
+
+
+
+
+    </style>
+
+</head>
+<body>
+
+    <div class="container">
+
+        <div class="chart_container">
+
+            <svg id="chart"></svg>
+
+        </div>
+
+        <br />
+        <div>
+            Dimension : <select id="dimensions"></select><br />
+            Keep chart sorted by selected dimension : <input type="checkbox" name="keepsorted" id="keepsorted" />
+        </div>
+
+    </div>
+
+
+
+        <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+        <script>
+
+
+            var width = parseInt(d3.select(".chart_container").style('width'), 10);
+            var height = parseInt(d3.select(".chart_container").style('height'), 10);
+
+            var margin = { top: 20, right: 20, bottom: 30, left: 40 };
+
+            var chartWidth = width - margin.left - margin.right;
+            var chartHeight = height - margin.top - margin.bottom;
+
+            var dimensions = [
+        { name: 'Dimension 1', key: 'value1' },
+        { name: 'Dimension 2', key: 'value2' }
+            ]
+
+            var data = [
+                { name: 'Toto', value1: 10, value2: 20 },
+                { name: 'Titi', value1: 15, value2: 25 },
+                { name: 'Tutu', value1: 5, value2: 80 },
+                { name: 'Tata', value1: 100, value2: 35 },
+                { name: 'Tete', value1: 5, value2: 80 },
+                { name: 'A', value1: 5, value2: 100 },
+                { name: 'B', value1: 10, value2: 200 },
+                { name: 'C', value1: 20, value2: 30 }
+            ];
+
+            var DoChangeDimension = function () {
+                //var dimension = this.options[this.selectedIndex].value;
+                DrawChart();
+            };
+
+            d3.select("#dimensions").on('change', DoChangeDimension).selectAll("option").data(dimensions).enter().append('option').attr('value', function (d) { return d.key; }).html(function (d) { return d.name; });
+            d3.select("#keepsorted").on('click', DoChangeDimension);
+
+            var x = d3.scale.ordinal().rangeRoundBands([0, chartWidth], 0);
+            var y = d3.scale.linear().rangeRound([chartHeight, 0], 0);
+
+            var xAxis = d3.svg.axis().scale(x).orient("bottom");
+            var yAxis = d3.svg.axis().scale(y).orient("left");
+
+            var chart = d3.select("#chart").append("g").attr("width", chartWidth).attr("height", chartHeight).attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+            var axis1 = chart.append("g").attr("class", "x axis").attr("transform", "translate(0," + chartHeight + ")");
+            var axis2 = chart.append("g").attr("class", "y axis").attr("transform", "translate(-3, 0)");
+
+            //var brush = d3.svg.brush()
+            //    .x(x)
+            //    //.extent([new Date(2013, 2, 2), new Date(2013, 2, 3)])
+            //    .on("brush", function () {
+
+            //        var extent = brush.extent();
+            //        //console.log(extent);
+
+            //        var barWidth = chartWidth / data.length;
+            //        extent[0] = Math.floor(extent[0] / barWidth) * barWidth + 2;
+            //        extent[1] = Math.ceil(extent[1] / barWidth) * barWidth + 1;
+
+            //        d3.select(this).call(brush.extent(extent))
+            //    });
+
+
+
+
+
+            var DrawChart = function (dimension) {
+
+                var duration = 250;
+
+                var dimension = dimension || d3.select("#dimensions").node().value;
+                var keepsorted = d3.select("#keepsorted").property('checked');
+
+                var sorted = data.slice(0);
+
+                //console.log(sorted);
+
+                if (keepsorted) {
+
+                    sorted = sorted.sort(function (a, b) {
+                        if (a[dimension] < b[dimension])
+                            return 1;
+                        if (a[dimension] > b[dimension])
+                            return -1;
+                        // a must be equal to b
+                        return 0;
+                    });
+
+                } else {
+
+                    //sorted = data;
+                    sorted = sorted.sort(function (a, b) {
+
+                        a = a.name; 
+                        b = b.name;
+
+                        return a.localeCompare(b);
+
+                        if (a > b)
+                            return 1;
+                        if (a < b)
+                            return -1;
+                        // a must be equal to b
+                        return 0;
+                    });
+
+                };
+
+                //console.log(sorted);
+
+                y.domain([0, d3.max(sorted, function (d) { return d[dimension]; })]);
+                x.domain(sorted.map(function (d) { return d.name; }));
+
+                var barWidth = chartWidth / sorted.length;
+
+                var bar = chart.selectAll(".bar").data(sorted, function (d) { return d.name; });
+
+                bar
+                    .enter().append("rect")
+                        .attr("class", "bar");
+
+                bar
+                    .transition()
+                    .delay(function (d, i) { return i / sorted.length * duration; })
+                    .attr("width", barWidth - 1)
+                    .attr("x", function (d, i) { return x(d.name);/*return (i * barWidth) + 2;*/ })
+                    .attr("y", function (d) { return y(d[dimension]) - 1; })
+                    .attr("height", function (d) { return chartHeight - y(d[dimension]); });
+
+                //
+
+                bar.on('click', function (d, i) { alert('You clicked on ' + d.name + ' : item value is ' + d[dimension]); });
+
+                bar.exit().remove();
+
+                d3.transition().select(".x.axis").call(xAxis);
+                d3.transition().select(".y.axis").call(yAxis);
+
+                //barEnter
+                //    .append("text")
+                //    .attr("transform", function (d, i) { return "translate(" + i * barWidth + ",0)"; })
+                //    .attr("x", barWidth / 2)
+                //    .attr("y", function (d) { return y(d.value1) + 3; })
+                //    .attr("dy", ".75em")
+                //    .text(function (d) { return d.name; });
+
+
+            };
+
+            DrawChart();
+
+//            var gBrush = chart.append("g")
+//.attr("class", "brush")
+//.call(brush);
+
+//            gBrush.selectAll("rect")
+//    .attr("height", chartHeight)
+//            .attr('y', 1);
+
+        </script>
+
+</body>
+</html>

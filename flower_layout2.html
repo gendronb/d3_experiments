@@ -1,0 +1,534 @@
+﻿<!DOCTYPE html>
+<html>
+
+    <head>
+
+        <title>Flower Layout Test</title>
+        <link rel="stylesheet" href="css/default.css" />
+        <script src="lib/d3.v3.min.js"></script>
+
+        <style>
+
+            @font-face {
+                font-family: 'bellotabold';
+                src: url('bellota-bold.eot');
+                src: url('bellota-bold.eot?#iefix') format('embedded-opentype'),
+                     url('bellota-bold.woff') format('woff'),
+                     url('bellota-bold.ttf') format('truetype'),
+                     url('bellota-bold.svg#bellotabold') format('svg');
+                font-weight: normal;
+                font-style: normal;
+            }
+
+            body {
+                /*background: url(css/gridme.png) repeat;*/
+                background-color: #eee;
+            }
+
+            svg {
+                backface-visibility: hidden;
+            }
+
+            g.node {
+                cursor: pointer;
+            }
+
+            g.node path.circle {
+                backface-visibility: hidden;
+                -webkit-font-smoothing: antialiased;
+                stroke: #acacac;
+                stroke-width: 2;
+                fill: #fff;
+                -webkit-transform: scale(1,1);
+                -webkit-transition: -webkit-transform linear 0.3s;
+                filter: url(#f1); 
+            }
+
+            g.node.coasts path.circle {
+                fill: url(#grad1);
+            }
+
+            g.node.root path.circle {
+                /*fill: #afc7ea;*/
+                -webkit-transform: scale(1.3, 1.3);
+            }
+
+                        g.node.root.selected path.circle {
+                /*fill: #afc7ea;*/
+                -webkit-transform: scale(4, 4);
+            }
+
+            g.node:hover path.circle {
+                /*-webkit-transform: scale(1.2, 1.2);*/
+                /*opacity: 0.5;*/
+                /*z-index: 1000;
+                filter: url(css/filters.svg#filter1);*/ 
+                /*fill: #efefef;*/
+            }
+
+            g.node text {
+                -webkit-font-smoothing: antialiased;
+                font-family: arial;
+                font-weight: bold;
+                font-size: 0.7em;
+                fill: #b42001;
+                dominant-baseline: central;
+                width: 40px;
+                
+                -webkit-user-select: none;
+            }
+
+                        g.node.root text {
+                font-size: 0.8em;
+
+            }
+
+                                                g.node.root.selected text {
+                visibility: hidden;
+            }
+
+            g.node.coasts text {
+                fill: #333;
+            }
+
+            g.connector line {
+                stroke:#85cde4; stroke-width:4; stroke-linecap:round;
+            }
+
+                        g.connector path.toto {
+                            cursor: pointer;
+                stroke:#85cde4; stroke-width:3; 
+                fill: #fff;
+            }
+
+        </style>
+
+    </head>
+
+    <body>
+
+        <!--Dataset :
+        <select id="dataset">
+            <option value="countries1" selected="selected">Countries 1</option>
+            <option value="countries2">Countries 2</option>
+        </select><br />-->
+
+        <svg xmlns="http://www.w3.org/2000/svg" version="1.1">
+            <defs>
+                <filter id="f1" x="-10%" y="-10%" width="200%" height="200%">
+                    <feOffset result="offOut" in="SourceGraphic" dx="2" dy="2" />
+                    <!--<feColorMatrix result="matrixOut" in="offOut" type="matrix" values="0.2 0 0 0 0 0 0.2 0 0 0 0 0 0.2 0 0 0 0 0 1 0" />-->
+                    <feGaussianBlur result="blurOut" in="offOut" stdDeviation="3" />
+                    <feMerge>
+                        <feMergeNode in="blurOut" />
+                        <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                </filter>
+                <linearGradient id="grad1" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="40%" style="stop-color:#ddeaf7;stop-opacity:1" />
+                    <stop offset="80%" style="stop-color:#a4bee6;stop-opacity:1" />
+                    <stop offset="100%" style="stop-color:#ddeaf7;stop-opacity:1" />
+                </linearGradient>
+            </defs>
+            <!--<circle r="30" cx="50" cy="50" style="stroke:gray; fill:aliceblue; stroke-width:3px" filter="url(#f1)" />-->
+        </svg>
+
+        <script src="lib/xml2json.min.js"></script>
+        <script>
+
+            d3.selection.prototype.moveToFront = function () {
+                return this.each(function () {
+                    this.parentNode.appendChild(this);
+                });
+            };
+
+            var endall = function(transition, callback) {
+                var n = 0;
+                transition
+                    .each(function () { ++n; })
+                    .each("end", function () { if (!--n) callback.apply(this, arguments); });
+            };
+
+            d3.layout.flower = function () {
+
+                var value = Number;
+                //    sort = d3_layout_pieSortByValue,
+                var startAngle = (Math.PI / 2) * -1;
+                var circle = Math.PI * 2;
+
+                function flower(data) {
+
+                    // Compute the numeric values for each data element.
+                    //var values = data.map(function(d, i) { return +value.call(flower, d, i); });
+
+                    //// Compute the start angle.
+                    //var a = +(typeof startAngle === "function"
+                    //    ? startAngle.apply(this, arguments)
+                    //    : startAngle);
+
+                    //// Compute the angular scale factor: from value to radians.
+                    //var k = ((typeof endAngle === "function"
+                    //    ? endAngle.apply(this, arguments)
+                    //    : endAngle) - a)
+                    //    / d3.sum(values);
+
+                    var step = circle / (data.length - 1);
+
+                    //// Optionally sort the data.
+                    var index = d3.range(data.length);
+                    //if (sort != null) index.sort(sort === d3_layout_pieSortByValue
+                    //    ? function(i, j) { return values[j] - values[i]; }
+                    //    : function(i, j) { return sort(data[i], data[j]); });
+
+                    // Compute the petals!
+                    var petals = [];
+
+                    index.forEach(function (i) {
+
+                        var d;
+
+                        petals[i] = {
+                            data: data[i],
+                            angle: startAngle + (step * i),
+                            value: i
+                            //startAngle: a,
+                            //endAngle: a += d * k
+                        };
+
+                    });
+
+                    return petals;
+                }
+
+                ///**
+                // * Specifies the value function *x*, which returns a nonnegative numeric value
+                // * for each datum. The default value function is `Number`. The value function
+                // * is passed two arguments: the current datum and the current index.
+                // */
+                //pie.value = function(x) {
+                //    if (!arguments.length) return value;
+                //    value = x;
+                //    return pie;
+                //};
+
+                ///**
+                // * Specifies a sort comparison operator *x*. The comparator is passed two data
+                // * elements from the data array, a and b; it returns a negative value if a is
+                // * less than b, a positive value if a is greater than b, and zero if a equals
+                // * b.
+                // */
+                //pie.sort = function(x) {
+                //    if (!arguments.length) return sort;
+                //    sort = x;
+                //    return pie;
+                //};
+
+                flower.startAngle = function(x) {
+                    if (!arguments.length) return startAngle;
+                    startAngle = x;
+                    return pie;
+                };
+
+                return flower;
+            };
+
+            //var countries1 = [
+            //    { name: 'Austria', type: 'pays' },
+            //    { name: 'Europe', type: 'continent' },
+            //    { name: 'Germany', type: 'pays' },
+            //    { name: 'Slovakia', type: 'pays' },
+            //    { name: 'Poland', type: 'pays' }
+            //];
+
+            //var countries2 = [
+            //    { name: 'Europe', type: 'continent' },
+            //    { name: 'Austria', type: 'pays' },
+            //    { name: 'Poland', type: 'pays' }
+            //];
+
+
+            var width = 500,
+            height = 500,
+            radius = Math.min(width, height) / 2,
+            centerX = 0,
+            centerY = 0,
+            nodeSize = 40,
+            easing = "sin-out",
+            working = false
+            duration = 600;
+
+            var svg = d3.select("svg")
+                .attr("width", width)
+                .attr("height", height)
+            .append("g")
+                .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
+
+            var flowerLayout = d3.layout.flower();
+
+            var rootX, rootY;
+
+            var updateNodes = function(newMode, fromPosition) {
+
+                //var dataset = d3.select("#dataset").node().value === 'countries1' ? countries1 : countries2;
+                //var dataset = data;
+                var dataset = extractNeighborsFor(newMode);
+                //console.log(dataset);
+
+                working = true;
+
+
+
+                var lines = svg.selectAll("g.connector")
+    .data(flowerLayout(dataset), function (d) { return 'line-' + d.data.name; });
+
+                lines.select('path.toto')
+.style('opacity', 0);
+
+                var lineEnter = lines.enter().insert("g").attr('class', 'connector');
+
+                var fromPosition = fromPosition || { x: 0, y: 0 };
+
+
+
+                lineEnter.append('line')
+                //    .attr('x1', fromPosition.x)
+                //    .attr('y1', fromPosition.y)
+                    .attr('x2', fromPosition.x)
+                    .attr('y2', fromPosition.y);
+
+                lines.select('line').attr('x1', fromPosition.x)
+    .attr('y1', fromPosition.y);
+
+                lines.exit()
+                    .remove();
+
+                var nodes = svg.selectAll("g.node")
+                    .data(flowerLayout(dataset), function (d) { return d.data.name; });
+
+                var enter = nodes.enter().append("g")
+                    .attr('class', 'node')
+                    .attr('class', function (d) { return 'node ' + d.data.type || null; })
+                    //.attr("transform", 'scale(0,0)');
+
+                //enter.append('circle')
+                //    .attr("r", nodeSize);
+
+                .attr("transform", function (d) {
+                    var tr = "translate(" + fromPosition.x + "," + fromPosition.y + ")";
+                    //console.log(tr);
+                    return tr;
+                });
+
+                enter.append('path')
+                    .attr('class', 'circle')
+    .attr("d", d3.svg.symbol()
+                    .type(function (d) { return d.data.type === 'coasts' ? 'circle' : 'circle'; })
+                    .size(function (d) { return Math.pow(nodeSize * 2, 2); }));
+
+                enter.append("text")
+                     .style("text-anchor", "middle")
+                     .text(function (d) { return d.data.name; });
+
+
+                //console.log(rootX);
+
+                nodes
+                    .classed('root', function (d) {
+
+                        if (d.data.isRoot) {
+                            var sel = d3.select(this);
+                            sel.moveToFront();
+                        }
+                        return d.data.isRoot;
+
+                    })
+                    .classed('selected', false)
+
+
+
+
+                    .transition()
+                
+                    .duration(duration)
+
+                    .ease(easing)
+                    .attr("transform", function (d) {
+                        if (d.data.isRoot) {
+                            rootX = Math.round(centerX + (radius * Math.sin(d.angle) * 1));
+                            //console.log(rootX);
+                        }
+                        var y = d.data.isRoot ? 0 : Math.round(centerX + ((radius - (nodeSize * 1.5)) * Math.sin(d.angle) * 1));
+                        var x = d.data.isRoot ? 0 : Math.round(centerY + ((radius - (nodeSize * 1.5)) * Math.cos(d.angle) * 1));
+                        //console.log(d);
+                        //var tr = "translate3d(" + Math.round(centerX + (130 * Math.sin(d.angle) * 1)) + "," + Math.round(centerY + (130 * Math.cos(d.angle) * -1)) + ",0)";
+                        var tr = "translate(" + x + "," + y + ")";
+                        //console.log(tr);
+                        return tr;
+                    });
+
+
+                lines.select('line')
+    .transition()
+                    .call(endall, function () {
+                        working = false;
+
+                        lineEnter.append('path')
+                    .attr('class', 'toto')
+    .attr("d", d3.svg.symbol()
+                    .size(function (d) { return Math.pow(nodeSize, 1.6); }));
+
+                        lines.select('path.toto')
+                        .style('opacity', 1)
+                            //.attr("transform", 'scale:(0,0)')
+                        .attr("transform", function (d) {
+                            if (d.data.isRoot) {
+                                rootX = Math.round(centerX + (radius * Math.sin(d.angle) * 1));
+                                //console.log(rootX);
+                            }
+                            var y = d.data.isRoot ? 0 : Math.round(centerX + ((radius - (nodeSize * 1.5)) * Math.sin(d.angle) * 1)) / 2;
+                            var x = d.data.isRoot ? 0 : Math.round(centerY + ((radius - (nodeSize * 1.5)) * Math.cos(d.angle) * 1)) / 2;
+                            //console.log(d);
+                            //var tr = "translate3d(" + Math.round(centerX + (130 * Math.sin(d.angle) * 1)) + "," + Math.round(centerY + (130 * Math.cos(d.angle) * -1)) + ",0)";
+                            var tr = "translate(" + x + "," + y + ") scale(0)";
+                            //console.log(tr);
+                            return tr;
+                        })
+                        .transition().duration(100)
+
+                    .ease(easing)
+                                                    .attr("transform", function (d) {
+                                                        if (d.data.isRoot) {
+                                                            rootX = Math.round(centerX + (radius * Math.sin(d.angle) * 1));
+                                                            //console.log(rootX);
+                                                        }
+                                                        var y = d.data.isRoot ? 0 : Math.round(centerX + ((radius - (nodeSize * 1.5)) * Math.sin(d.angle) * 1)) / 1.8;
+                                                        var x = d.data.isRoot ? 0 : Math.round(centerY + ((radius - (nodeSize * 1.5)) * Math.cos(d.angle) * 1)) / 1.8;
+                                                        //console.log(d);
+                                                        //var tr = "translate3d(" + Math.round(centerX + (130 * Math.sin(d.angle) * 1)) + "," + Math.round(centerY + (130 * Math.cos(d.angle) * -1)) + ",0)";
+                                                        var tr = "translate(" + x + "," + y + ") scale(1)";
+                                                        //console.log(tr);
+                                                        return tr;
+                                                    });
+                        //.style('opacity', 1);
+                    
+
+
+    })
+    .duration(duration)
+    .ease(easing)
+                                        //.delay(2000)
+    .attr('x1', 0)
+    .attr('y1', 0)
+    .attr('y2', function (d) { return d.data.isRoot ? 0 : Math.round(centerX + ((radius - (nodeSize * 1.5)) * Math.sin(d.angle) * 1)) })
+    .attr('x2', function (d) { return d.data.isRoot ? 0 : Math.round(centerY + ((radius - (nodeSize * 1.5)) * Math.cos(d.angle) * 1)) });
+
+
+                nodes.exit()
+                    //.transition()
+                    //.duration(200)
+                    //.attr("transform", 'scale(0,0)')
+                    .remove();
+
+                nodes.on('click', function (d, i) {
+
+                    if (working) {
+                        return;
+                    }
+
+                    var sel = d3.select(this);
+
+                    if (d.data.isRoot) {
+
+                        sel.classed('selected', !(this.className.baseVal.indexOf('selected') >= 0));
+                        return;
+                    }
+
+
+                    var y = Math.round(centerX + ((radius - (nodeSize * 1.5)) * Math.sin(d.angle) * 1));
+                    var x = Math.round(centerY + ((radius - (nodeSize * 1.5)) * Math.cos(d.angle) * 1));
+
+                    //alert('You clicked on ' + d.data.name);
+                    //var neighbors = extractNeighborsFor(, d.data.type);
+                    updateNodes(d.data.name, {x: x, y: y});
+
+                });
+
+                nodes.on("mouseover", function () {
+                    //if (d.data.isRoot) {
+                    //    return;
+                    //}
+                    var sel = d3.select(this);
+                    //console.log(sel);
+                    sel.moveToFront();
+                });
+
+            }
+
+            //updateNodes();
+
+            //d3.select("#dataset").on('change', updateNodes);
+
+            var extractNeighborsFor = function (id, type) {
+
+                //var selector = type === 'borders' ? 'country[id="' + id + '"]' : 'text()[contains(., "Baltic Sea")]';
+                var selector = 'country[id="' + id + '"]';
+                //console.log(selector);
+
+                //var selector = 'country[id="' + rootId + '"]';
+                //console.log(selector);
+                var root = d3.select(xmlData).select(selector).selectAll('borders, coasts')[0];
+
+                //console.log(root);
+
+                var neighbors = (root.map(function (d, i) {
+                    
+                    var node = {};
+                    node.name = d.nodeName === 'borders' ? d.attributes.country.nodeValue : d.textContent;
+                    //node.data = d.attributes;
+                    //node.name = d.id;
+                    node.type = d.nodeName;
+                    return node;
+
+                }));
+
+                neighbors.splice(neighbors.length, 0, {name: id, isRoot: true});
+
+                return neighbors;
+
+
+            };
+
+            var xmlData;
+
+            d3.xml("data/cia.xml", "application/xml", function (xml) {
+
+                xmlData = xml;
+
+                //var x2js = new X2JS({ 'attributePrefix': '$' });
+                //var json = x2js.xml2json(xml);
+
+                //console.log(JSON.stringify(json));
+
+                //var france = d3.select(xml).select('country[id="cid-cia-France"]').selectAll('borders')[0];
+                //var neighbors = (france.map(function (d, i) {
+                //    var node = {};
+                //    node.name = d.attributes.country.nodeValue;
+                //    //node.name = d.id;
+                //    node.type = d.nodeName;
+                //    return node;
+                //}));
+
+                //var neighbors = extractNeighborsFor('cid-cia-France');
+                updateNodes('cid-cia-France');
+
+            });
+
+
+
+
+
+        </script>
+
+    </body>
+
+</html>

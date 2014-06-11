@@ -1,0 +1,176 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+    <title></title>
+    <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+
+    <style>
+
+        svg {
+            cursor: pointer;
+        }
+
+        svg.ondrag {
+            cursor: move;
+        }
+
+        .countries {
+            stroke: aqua;
+            fill: none;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+    <script src="http://d3js.org/d3.geo.projection.v0.min.js"></script>
+    <script src="http://d3js.org/topojson.v1.min.js"></script>
+
+    <script>
+
+        var width = 960,
+            height = 500;
+
+        var projection = d3.geo.orthographic()
+            .scale(250)
+            .translate([width / 2, height / 2])
+            .clipAngle(90);
+
+        var path = d3.geo.path()
+            .projection(projection);
+
+        var λ = d3.scale.linear()
+            .domain([0, width])
+            .range([-180, 180]);
+
+        var φ = d3.scale.linear()
+            .domain([0, height])
+            .range([90, -90]);
+
+        var svg = d3.select("body").append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+        var m0 = null;
+        var o0 = null;
+
+        var trackballAngles = function (pt) {
+
+            // based on http://www.opengl.org/wiki/Trackball  
+            // given a click at (x,y) in canvas coords on the globe (trackball),
+            // calculate the spherical coordianates for the point as a rotation around
+            // the vertical and horizontal axes
+
+            var r = projection.scale();
+            var c = projection.translate();
+            var x = pt[0] - c[0], y = -(pt[1] - c[1]), ss = x * x + y * y;
+
+            var z = r * r > 2 * ss ? Math.sqrt(r * r - ss) : r * r / 2 / Math.sqrt(ss);
+
+            var lambda = Math.atan2(x, z) * 180 / Math.PI;
+            var phi = Math.atan2(y, z) * 180 / Math.PI;
+
+            return [lambda, phi];
+
+        };
+
+        var composedRotation = function (λ, ϕ, γ, δλ, δϕ) {
+
+            λ = Math.PI / 180 * λ;
+            ϕ = Math.PI / 180 * ϕ;
+            γ = Math.PI / 180 * γ;
+            δλ = Math.PI / 180 * δλ;
+            δϕ = Math.PI / 180 * δϕ;
+
+            var sλ = Math.sin(λ), sϕ = Math.sin(ϕ), sγ = Math.sin(γ),
+                sδλ = Math.sin(δλ), sδϕ = Math.sin(δϕ),
+                cλ = Math.cos(λ), cϕ = Math.cos(ϕ), cγ = Math.cos(γ),
+                cδλ = Math.cos(δλ), cδϕ = Math.cos(δϕ);
+
+            var m00 = -sδλ * sλ * cϕ + (sγ * sλ * sϕ + cγ * cλ) * cδλ,
+                    m01 = -sγ * cδλ * cϕ - sδλ * sϕ,
+                        m02 = sδλ * cλ * cϕ - (sγ * sϕ * cλ - sλ * cγ) * cδλ,
+                m10 = -sδϕ * sλ * cδλ * cϕ - (sγ * sλ * sϕ + cγ * cλ) * sδλ * sδϕ - (sλ * sϕ * cγ - sγ * cλ) * cδϕ,
+                    m11 = sδλ * sδϕ * sγ * cϕ - sδϕ * sϕ * cδλ + cδϕ * cγ * cϕ,
+                         m12 = sδϕ * cδλ * cλ * cϕ + (sγ * sϕ * cλ - sλ * cγ) * sδλ * sδϕ + (sϕ * cγ * cλ + sγ * sλ) * cδϕ,
+                m20 = -sλ * cδλ * cδϕ * cϕ - (sγ * sλ * sϕ + cγ * cλ) * sδλ * cδϕ + (sλ * sϕ * cγ - sγ * cλ) * sδϕ,
+                    m21 = sδλ * sγ * cδϕ * cϕ - sδϕ * cγ * cϕ - sϕ * cδλ * cδϕ,
+                         m22 = cδλ * cδϕ * cλ * cϕ + (sγ * sϕ * cλ - sλ * cγ) * sδλ * cδϕ - (sϕ * cγ * cλ + sγ * sλ) * sδϕ;
+
+            if (m01 != 0 || m11 != 0) {
+                γ_ = Math.atan2(-m01, m11);
+                ϕ_ = Math.atan2(-m21, Math.sin(γ_) == 0 ? m11 / Math.cos(γ_) : -m01 / Math.sin(γ_));
+                λ_ = Math.atan2(-m20, m22);
+            } else {
+                γ_ = Math.atan2(m10, m00) - m21 * λ;
+                ϕ_ = -m21 * Math.PI / 2;
+                λ_ = λ;
+            }
+
+            return ([λ_ * 180 / Math.PI, ϕ_ * 180 / Math.PI, γ_ * 180 / Math.PI]);
+
+        };
+
+        var mouseMove = function () {
+
+            if (m0) {
+
+                var m1 = trackballAngles(d3.mouse(this));
+                var o1;
+
+                o1 = composedRotation(o0[0], o0[1], o0[2], m1[0] - m0[0], m1[1] - m0[1]);
+                //o1 = [o0[0] - (m0[0] - m1[0]) / 8, o0[1] - (m1[1] - m0[1]) / 8];
+
+                //var p = d3.mouse(this);
+                //projection.rotate([λ(p[0]), φ(p[1])]);
+
+                projection.rotate(o1);
+
+                svg.selectAll("path").attr("d", path);
+            }
+
+        };
+
+        var mouseDown = function () {
+            d3.select(this).classed("ondrag", true);
+            m0 = trackballAngles(d3.mouse(svg[0][0]));
+            o0 = projection.rotate();
+            d3.event.preventDefault();
+        };
+
+        var mouseUp = function () {
+            d3.select(this).classed("ondrag", false);
+            if (m0) {
+                //mouseMove();
+                m0 = null;
+            }
+        };
+
+        svg
+            .on("mousemove", mouseMove)
+            .on("mousedown", mouseDown)
+            .on("mouseup", mouseUp);
+
+        d3.json("data/world-110m.json", function (error, world) {
+            //console.log(world.objects);
+            svg.append("path")
+                .datum(topojson.mesh(world, world.objects.land))
+                .attr("class", "countries")
+                .attr("d", path);
+        });
+        
+
+
+
+
+
+
+    </script>
+
+</body>
+</html>

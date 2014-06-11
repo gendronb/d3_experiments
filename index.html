@@ -1,0 +1,50 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+    <link rel="stylesheet" href="css/default.css" />
+    <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+</head>
+<body>
+
+    <table id="table_1">
+        <thead>
+            <tr><td>  A</td><td>  B</td><td>  C</td><td>  D</td></tr>
+        </thead>
+        <tbody>
+            <tr><td>  0</td><td>  1</td><td>  2</td><td>  3</td></tr>
+            <tr><td>  4</td><td>  5</td><td>  6</td><td>  7</td></tr>
+            <tr><td>  8</td><td>  9</td><td> 10</td><td> 11</td></tr>
+            <tr><td> 12</td><td> 13</td><td> 14</td><td> 15</td></tr>
+        </tbody>
+    </table>
+
+    <script>
+
+        var td = d3.selectAll("#table_1 tr").selectAll("td");
+        td.style("color", function (d, i) { return i == 2 ? "red" : null ; });
+
+        var matrix = [
+          [0, 1, 2, 3],
+          [4, 5, 6, 7],
+          [8, 9, 10, 11],
+          [12, 13, 14, 15],
+        ];
+
+        var body = d3.select("body");
+        var table = body.append("table");
+
+        var tr = table.selectAll("tr")
+            .data(matrix)
+            .enter().append("tr");
+
+        var td = tr.selectAll("td")
+            .data(function (d) { return d; })
+            .enter().append("td").text(function (d) { return d; }).style("opacity", 0);
+
+        table.selectAll("td").transition().duration(500).delay(function (d, i) { return i * 100; }).style("opacity", 1);
+
+    </script>
+
+</body>
+</html>
